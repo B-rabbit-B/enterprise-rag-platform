@@ -34,6 +34,9 @@ logs/
 tmp_upload/
 uploads/
 
+# ================ 本地测试文档（不上传 GitHub） ================
+test_docs/
+
 # ================ 编辑器 / IDE ================
 .vscode/
 .idea/

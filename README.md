@@ -17,10 +17,10 @@
 | 数据库 | SQLAlchemy + SQLite | 轻量关系型存储用户 / 会话 / 消息 / 文档元数据 |
 | 向量库 | ChromaDB | 本地向量存储与语义检索 |
 | 文档处理 | LangChain / PyPDF | PDF / TXT / MD 解析与分块 |
-| 向量模型 | sentence-transformers（bge-m3） | 中文 Embedding |
-| 重排序 | BGE-Reranker（bge-reranker-large） | Cross-encoder 语义精排 |
+| 向量模型 | sentence-transformers（all-MiniLM-L6-v2） | 通用 Embedding，支持多语言 |
+| 重排序 | BGE-Reranker（bge-reranker-base） | Cross-encoder 语义精排 |
 | 大模型 | 阿里 DashScope（qwen 系列） | 支持兼容 OpenAI 协议的任意 LLM |
-| 鉴权 | PyJWT + passlib(bcrypt) | JWT Token 鉴权 + 密码加盐哈希 |
+| 鉴权 | python-jose + passlib(bcrypt) | JWT Token 鉴权 + 密码加盐哈希 |
 | 配置 | pydantic-settings + python-dotenv | `.env` 配置管理 |
 | 日志 | 自研 logger（按天滚动） | 结构化字段：user_id / query / hit_count / cost_sec |
 
@@ -55,7 +55,7 @@
 ### 1. 克隆仓库
 
 ```bash
-git clone https://github.com/<你的github账号>/enterprise-rag-platform.git
+git clone https://github.com/B-rabbit-B/enterprise-rag-platform.git
 cd enterprise-rag-platform
 ```
 
@@ -252,4 +252,3 @@ enterprise-rag-platform/
 
 MIT License. 欢迎 Fork / Star / PR。
 ```
-
