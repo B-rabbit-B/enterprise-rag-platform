@@ -26,9 +26,11 @@ class MessageCreate(BaseModel):
     content: str = Field(..., min_length=1, max_length=4000, description="消息内容")
 
 class RAGMessageCreate(BaseModel):
-    """RAG问答入参：用户问题 + 可选的 tag 过滤"""
+    """RAG问答入参：用户问题 + 可选 tag 过滤 + 检索策略切换"""
     question: str = Field(..., min_length=1, max_length=2000, description="用户问题，最长 2000 字符")
     tag: Optional[str] = Field(default=None, max_length=50, description="过滤标签")
+    retrieve_mode: Optional[str] = Field(default="hybrid", description="检索策略: hybrid=混合 / vector=纯向量")
+    use_rerank: Optional[bool] = Field(default=True, description="是否启用 Rerank 精排")
 
 class RAGMessageOut(BaseModel):
     """RAG问答返回：自然语言回答 + 文档溯源"""

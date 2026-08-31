@@ -147,6 +147,8 @@ def rag_chat(
     tag_filter: Optional[str],
     session_id: int,
     user_id: int,
+    retrieve_mode: str = "hybrid",
+    use_rerank: bool = True,
 ) -> dict:
     """
     完整 RAG 业务链路：
@@ -163,6 +165,7 @@ def rag_chat(
             tag=tag_filter,
             top_k=settings.RAG_RETRIEVE_TOP_K,
             use_rerank=False,
+            retrieve_mode=retrieve_mode,
         )
     except Exception as e:
         _cost_err = time.time() - _total_start
@@ -176,19 +179,23 @@ def rag_chat(
         }
     print(f"[rag_chat] ① 向量召回耗时 {time.time() - _t0:.2f}s，命中 {len(raw_hits)} 条")
 
-    # 2. Rerank 重排序（语义相关性过滤）
+    # 2. Rerank 重排序（语义相关性过滤）— 可通过 use_rerank=False 跳过
     _t0 = time.time()
-    try:
-        rerank_util = RerankUtil()
-        rerank_hits = rerank_util.rerank(
-            query=user_query,
-            hits=raw_hits,
-            top_n=settings.RAG_RERANK_TOP_N,
-        )
-    except Exception as e:
-        # 重排失败不阻断：退化使用原始 hits
+    if use_rerank:
+        try:
+            rerank_util = RerankUtil()
+            rerank_hits = rerank_util.rerank(
+                query=user_query,
+                hits=raw_hits,
+                top_n=settings.RAG_RERANK_TOP_N,
+            )
+        except Exception as e:
+            # 重排失败不阻断：退化使用原始 hits
+            print(f"[rag_chat] Rerank 异常，降级为原始 hits: {e}")
+            rerank_hits = raw_hits[: settings.RAG_RERANK_TOP_N]
+    else:
         rerank_hits = raw_hits[: settings.RAG_RERANK_TOP_N]
-    print(f"[rag_chat] ② Rerank 重排耗时 {time.time() - _t0:.2f}s，保留 {len(rerank_hits)} 条")
+    print(f"[rag_chat] ② Rerank 重排耗时 {time.time() - _t0:.2f}s（use_rerank={use_rerank}），保留 {len(rerank_hits)} 条")
 
     # 3. Token 截断，避免超出模型上下文窗口
     _t0 = time.time()
@@ -245,8 +252,15 @@ def rag_chat(
             llm_error = f"大模型调用异常：{str(e)}"
     print(f"[rag_chat] ④ LLM调用耗时 {time.time() - _t0:.2f}s")
 
-    # 5. 构造溯源元数据
-    ref_list = [item.get("metadata", {}) for item in final_hits]
+    # 5. 构造溯源列表（前端需要原文 + 分数）
+    ref_list = []
+    for item in final_hits:
+        ref_list.append({
+            "document": item.get("document", ""),
+            "metadata": item.get("metadata", {}),
+            "similarity": item.get("similarity", 0),
+            "rerank_score": item.get("rerank_score", 0),
+        })
 
     # 兜底：无答案时返回友好提示，但仍持久化对话
     if llm_error:

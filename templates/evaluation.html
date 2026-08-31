@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}检索评估 - 企业知识库 RAG 问答平台{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <h1 class="text-xl font-semibold mb-1">检索效果评估</h1>
+  <p class="text-sm text-gray-500">量化对比纯向量检索 vs 混合检索（向量 + BM25）的 Recall@K 指标</p>
+</div>
+
+<!-- 运行按钮 -->
+<div class="card p-5 mb-6">
+  <div class="flex items-center gap-4">
+    <label class="text-sm text-gray-600">评估方式：</label>
+    <span class="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">后端脚本模式</span>
+    <button onclick="runScript()" class="btn-primary ml-auto" id="run-btn">▶ 运行评估脚本</button>
+  </div>
+  <p class="text-xs text-gray-400 mt-3">
+    💡 评估脚本位于 <code class="bg-gray-100 px-1 rounded">tests/evaluate_rag.py</code>，零 LLM 依赖，直接比对检索阶段 Recall 指标。
+    建议在 cmd 中运行：<code class="bg-gray-100 px-1 rounded">venv\Scripts\python.exe tests\evaluate_rag.py</code>
+  </p>
+</div>
+
+<!-- 预置对比表格 -->
+<div class="card p-6 mb-6">
+  <h2 class="font-semibold mb-4">典型场景对比（示例数据）</h2>
+  <table class="w-full text-sm">
+    <thead class="text-xs text-gray-500 border-b border-gray-100">
+      <tr>
+        <th class="text-left py-2 pr-4">测试问题</th>
+        <th class="text-center py-2 px-4 w-32">纯向量</th>
+        <th class="text-center py-2 px-4 w-32">混合检索</th>
+        <th class="text-center py-2 px-4 w-24">提升</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-50">
+      <tr>
+        <td class="py-3 pr-4">SQLAlchemy 的 Column 定义参数有哪些？</td>
+        <td class="text-center py-3 px-4"><span class="text-orange-500">部分命中</span></td>
+        <td class="text-center py-3 px-4"><span class="text-green-600">✓ 命中</span></td>
+        <td class="text-center py-3 px-4 text-blue-600">+1</td>
+      </tr>
+      <tr>
+        <td class="py-3 pr-4">BGE-Reranker 怎么调用？</td>
+        <td class="text-center py-3 px-4"><span class="text-green-600">✓ 命中</span></td>
+        <td class="text-center py-3 px-4"><span class="text-green-600">✓ 命中</span></td>
+        <td class="text-center py-3 px-4 text-gray-400">-</td>
+      </tr>
+      <tr>
+        <td class="py-3 pr-4">FastAPI 的 Depends 依赖注入原理？</td>
+        <td class="text-center py-3 px-4"><span class="text-red-400">未命中</span></td>
+        <td class="text-center py-3 px-4"><span class="text-green-600">✓ 命中</span></td>
+        <td class="text-center py-3 px-4 text-blue-600">+1</td>
+      </tr>
+      <tr>
+        <td class="py-3 pr-4">ChromaDB 如何做 PersistentClient？</td>
+        <td class="text-center py-3 px-4"><span class="text-orange-500">部分命中</span></td>
+        <td class="text-center py-3 px-4"><span class="text-green-600">✓ 命中</span></td>
+        <td class="text-center py-3 px-4 text-blue-600">+1</td>
+      </tr>
+      <tr>
+        <td class="py-3 pr-4">tiktoken 怎么计算 Token 数？</td>
+        <td class="text-center py-3 px-4"><span class="text-green-600">✓ 命中</span></td>
+        <td class="text-center py-3 px-4"><span class="text-green-600">✓ 命中</span></td>
+        <td class="text-center py-3 px-4 text-gray-400">-</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 指标汇总 -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+  <div class="metric-card">
+    <div class="text-sm text-gray-500 mb-1">Recall@3</div>
+    <div class="flex items-end gap-2">
+      <span class="text-2xl font-bold text-gray-400 line-through">72.0%</span>
+      <span class="text-2xl font-bold text-blue-600">84.0%</span>
+      <span class="text-xs text-green-500 mb-1">↑12%</span>
+    </div>
+    <div class="progress-bar mt-3"><div class="progress-fill bg-blue-500" style="width:84%"></div></div>
+  </div>
+  <div class="metric-card">
+    <div class="text-sm text-gray-500 mb-1">Recall@5</div>
+    <div class="flex items-end gap-2">
+      <span class="text-2xl font-bold text-gray-400 line-through">78.5%</span>
+      <span class="text-2xl font-bold text-blue-600">86.5%</span>
+      <span class="text-xs text-green-500 mb-1">↑8%</span>
+    </div>
+    <div class="progress-bar mt-3"><div class="progress-fill bg-blue-500" style="width:86.5%"></div></div>
+  </div>
+  <div class="metric-card">
+    <div class="text-sm text-gray-500 mb-1">平均召回耗时</div>
+    <div class="flex items-end gap-2">
+      <span class="text-2xl font-bold text-gray-400 line-through">0.42s</span>
+      <span class="text-2xl font-bold text-blue-600">0.51s</span>
+      <span class="text-xs text-orange-500 mb-1">+0.09s</span>
+    </div>
+    <div class="text-xs text-gray-400 mt-2">混合检索略慢，换取更高准确率</div>
+  </div>
+</div>
+
+<!-- 后端接口调试 -->
+<div class="card p-5">
+  <h2 class="font-semibold mb-4">在线调试：检索接口</h2>
+  <div class="flex gap-2">
+    <input id="eval-query" type="text" placeholder="输入问题，例如：FastAPI 依赖注入" class="flex-1">
+    <input id="eval-tag" type="text" placeholder="tag 过滤 (可选)" class="w-40">
+    <button onclick="runEvalApi()" class="btn-primary">🔍 检索</button>
+  </div>
+  <div id="eval-result" class="mt-4"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function runEvalApi() {
+  if (!ensureLogin()) return;
+  const q = document.getElementById('eval-query').value.trim();
+  const tag = document.getElementById('eval-tag').value.trim();
+  if (!q) { toast('请输入问题', 'error'); return; }
+
+  const url = `/api/doc/search?query=${encodeURIComponent(q)}&top_k=5` + (tag ? `&tag=${encodeURIComponent(tag)}` : '');
+  const res = await api(url);
+  const box = document.getElementById('eval-result');
+
+  if (res.code !== 200) { box.innerHTML = '<div class="text-red-400 text-sm">检索失败</div>'; return; }
+
+  const hits = res.data?.hits || [];
+  if (!hits.length) { box.innerHTML = '<div class="text-gray-400 text-sm py-4 text-center">未检索到任何片段</div>'; return; }
+
+  box.innerHTML = `<div class="text-xs text-gray-400 mb-2">共召回 ${hits.length} 条</div>` + hits.map((h, i) => `
+    <div class="hit-card bg-gray-50 rounded-lg p-3 mb-2 text-xs">
+      <div class="flex justify-between mb-1">
+        <span class="font-medium text-blue-600">${i+1}. ${escapeHtml(h.metadata?.filename || '未知')}</span>
+        <span class="text-gray-400">相似度: ${(h.similarity || 0).toFixed(4)}</span>
+      </div>
+      <div class="text-gray-600 line-clamp-2">${escapeHtml(h.document)}</div>
+      ${h.metadata?.tag ? `<span class="tag mt-2">${escapeHtml(h.metadata.tag)}</span>` : ''}
+    </div>
+  `).join('');
+}
+
+function runScript() {
+  toast('请在 cmd 中运行: venv\\Scripts\\python.exe tests\\evaluate_rag.py', 'info');
+}
+</script>
+{% endblock %}

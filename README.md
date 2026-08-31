@@ -28,7 +28,7 @@
 
 ## ✨ 项目特性
 
-- ✅ **完整 RAG 闭环**：用户问题 → 向量检索(top_k) → Rerank 重排(top_n) → Token 截断 → Prompt 组装 → LLM 调用 → 返回答案 + 文档溯源
+- ✅ **完整 RAG 闭环**：用户问题 → 混合检索（向量 + BM25）(top_k) → Rerank 重排(top_n) → Token 截断 → Prompt 组装 → LLM 调用 → 返回答案 + 文档溯源
 - ✅ **JWT 鉴权 + 权限分级**：普通用户仅访问自身会话；管理员才可上传 / 删除文档；权限校验读取数据库真实字段，不信任 JWT 载荷
 - ✅ **Rerank 重排优化**：Cross-encoder 语义精排，降低误召回，显著提升回答质量
 - ✅ **Token 截断防溢出**：基于 `tiktoken` 统计 token，动态截断上下文，防止超出模型上下文窗口
@@ -39,6 +39,31 @@
 - ✅ **双库删除一致性**：删除文档时同步清理 SQLite 元数据与 Chroma 向量分片
 - ✅ **HuggingFace 国内镜像适配**：解决国内网络下载模型报错
 - ✅ **lifespan 生命周期管理**：Reranker 仅加载一次，避免 `reload` 重复加载
+- ✅ **递归字符分块 + 块重叠（v1.1）**：按段落 → 句子优先级多层递归切分，搭配重叠窗口缓解语义硬截断；PDF 表格规范化、OCR 乱码过滤
+- ✅ **混合检索 BM25 + 向量（v1.1）**：纯 Python BM25 零依赖实现，向量语义召回 + BM25 关键词精准命中加权融合，支持配置开关一键回退纯向量
+- ✅ **RAG 评估脚本（v1.1）**：无 LLM 依赖，自动对比不同检索方案 Recall@K，输出评估报告，为迭代提供量化依据
+
+---
+
+## 🚀 v1.1 更新内容
+
+1. **文档解析升级**：递归字符分块（段落 → 句子 → 硬切）+ 块重叠窗口；PDF 表格自动用 `|` 规范化列分隔；过滤 PUA 私有区字符、soft-hyphen、智能引号等 OCR/导出乱码噪声。
+2. **新增混合检索**：BM25 关键词检索（中英文混合分词，中文 bigram，英文空格分词）+ 向量检索加权融合，支持通过 `.env` 一键关闭回退原有纯向量模式。
+3. **新增 RAG 评估脚本**：无需调用 LLM、零 Token 费用，量化对比不同检索策略召回效果。
+
+**混合检索配置**（`.env` 可选，有默认值）：
+```ini
+HYBRID_ENABLE=true
+HYBRID_VECTOR_WEIGHT=0.6
+HYBRID_BM25_WEIGHT=0.4
+HYBRID_BM25_TOP_K=5
+```
+
+**运行评估脚本**：
+```cmd
+venv\Scripts\python.exe tests\evaluate_rag.py
+```
+脚本顶部 `SAMPLES` 列表为测试样本（问题 → 期望命中文档 tag），自行修改后运行，会输出纯向量 vs 混合检索的 Recall@K 对比表 + 详细报告。
 
 ---
 
@@ -172,7 +197,7 @@ Authorization: Bearer <token>
 
 ```
 用户提问
- → 向量检索 (top_k=5)
+ → 混合检索：向量召回(top_k*2) + BM25关键词召回(top_k) → 加权融合 (默认 0.6:0.4)
  → BGE-Reranker 重排序 (top_n=3)
  → tiktoken 上下文截断
  → 组装 Prompt（携带文档片段）
@@ -206,6 +231,7 @@ enterprise-rag-platform/
 ├── routers/             # 路由：user / chat / doc
 ├── schemas/             # Pydantic 请求 / 响应模型
 ├── service/             # 业务逻辑层（chat / doc / rag）
+├── tests/               # 测试脚本（含 RAG 检索效果评估脚本）
 ├── tests/               # 测试用例
 ├── utils/               # jwt / logger / rerank / response / token_counter
 ├── .env.example         # 环境变量模板（提交到仓库）
@@ -241,6 +267,8 @@ enterprise-rag-platform/
 ## 🚧 待迭代优化点
 
 - [x] ~~创建会话硬编码标题「新会话」~~（已修复，改为使用前端传入的 `session_name`）
+- [x] ~~文档分块固定长度、PDF 乱码~~（v1.1 已升级：递归字符分块 + PDF 乱码清洗）
+- [x] ~~只有纯向量检索，缺少专业术语精准命中~~（v1.1 已升级：BM25 + 向量混合检索）
 - [ ] 部分会话接口仍返回裸 ORM 对象，可进一步统一为 `code/msg/data` 响应格式
 - [ ] 支持 SSE 流式问答输出
 - [ ] Dockerfile 容器化部署 + docker-compose

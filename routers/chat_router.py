@@ -147,6 +147,8 @@ def send_rag_message(
         tag_filter=req.tag,
         session_id=session_id,
         user_id=user_id,
+        retrieve_mode=req.retrieve_mode or "hybrid",
+        use_rerank=req.use_rerank if req.use_rerank is not None else True,
     )
     if result.get("success"):
         return ApiResponse.success(data=result, msg="问答成功")

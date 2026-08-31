@@ -1,0 +1,202 @@
+/* ============================================
+   精密控制台 · 深空蓝主题
+   基于 PRD Design Token，覆盖 Element-Plus 默认色
+   ============================================ */
+
+:root {
+  /* --- 语义色（HSL 转 RGB） --- */
+  /* primary hsl(210 100% 40%) = #0066CC */
+  --primary: #0066cc;
+  --primary-hover: #0052a3;
+  --primary-active: #003d7a;
+  --primary-foreground: #ffffff;
+
+  /* accent hsl(214 45% 95%) = #EEF3FB */
+  --accent: #eef3fb;
+  --accent-foreground: #0066cc;
+
+  /* 中性底 */
+  --background: #f3f6fb;     /* hsl(214 32% 97%) */
+  --card: #ffffff;
+  --foreground: #1d2b48;     /* hsl(217 33% 17%) */
+  --muted-foreground: #5f6b88; /* hsl(215 16% 47%) */
+  --border: #dde4ef;         /* hsl(214 20% 88%) */
+  --input: #dde4ef;
+
+  /* --- 语义状态色 --- */
+  --success: #0d7a3a;        /* hsl(150 60% 30%) */
+  --success-bg: #e8f6ee;
+  --success-border: #b8e0c4;
+
+  --warning: #a85c18;        /* hsl(32 85% 38%) */
+  --warning-bg: #fef5e7;
+  --warning-border: #f5d68a;
+
+  --destructive: #b32323;    /* hsl(0 70% 42%) */
+  --destructive-bg: #fce8e8;
+  --destructive-border: #efb9b9;
+
+  --info-bg: #e6f2ff;
+  --info-border: #8cc2f2;
+
+  /* --- Element-Plus 覆盖 --- */
+  --el-color-primary: var(--primary);
+  --el-color-primary-light-3: #3385d6;
+  --el-color-primary-light-5: #66a3e0;
+  --el-color-primary-light-7: #99c1eb;
+  --el-color-primary-light-8: #b3d1f0;
+  --el-color-primary-light-9: #d9e8f8;
+  --el-color-primary-dark-2: var(--primary-active);
+
+  --el-text-color-primary: var(--foreground);
+  --el-text-color-regular: var(--muted-foreground);
+  --el-border-color: var(--border);
+  --el-bg-color: var(--card);
+  --el-bg-color-page: var(--background);
+  --el-fill-color: var(--accent);
+  --el-fill-color-light: var(--background);
+
+  /* --- 字体 --- */
+  --font-sans: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Fira Code', Consolas, Menlo, monospace;
+  --font-display: 'Space Grotesk', var(--font-sans);
+
+  /* --- 圆角 --- */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* --- 阴影 --- */
+  --shadow-sm: 0 1px 2px rgba(29, 43, 72, 0.05);
+  --shadow-md: 0 4px 12px rgba(29, 43, 72, 0.08);
+  --shadow-lg: 0 8px 24px rgba(29, 43, 72, 0.12);
+
+  /* --- RAG 链路色（embedding→检索→rerank→生成） --- */
+  --rag-embedding: #0066cc;
+  --rag-retrieve: #3a8fd6;
+  --rag-rerank: #4ab89e;
+  --rag-generate: #0d7a3a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- 等宽数据显示 --- */
+.font-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* --- 点阵网格底纹（总览页 hero 用） --- */
+.dotted-grid-bg {
+  background-image:
+    radial-gradient(circle, rgba(0, 102, 204, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* --- RAG 链路渐变条 --- */
+.rag-pipeline-bar {
+  display: flex;
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.rag-pipeline-bar > div {
+  flex: 1;
+}
+.rag-pipeline-bar .seg-1 { background: var(--rag-embedding); flex-basis: 25%; }
+.rag-pipeline-bar .seg-2 { background: var(--rag-retrieve); flex-basis: 25%; }
+.rag-pipeline-bar .seg-3 { background: var(--rag-rerank); flex-basis: 25%; }
+.rag-pipeline-bar .seg-4 { background: var(--rag-generate); flex-basis: 25%; }
+
+/* --- 卡片统一样式 --- */
+.console-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 150ms ease, border-color 150ms ease;
+}
+.console-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: #c4cfdf;
+}
+
+/* --- 状态徽章 --- */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.status-badge .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.status-success  { background: var(--success-bg);  color: var(--success);  border: 1px solid var(--success-border); }
+.status-success  .dot { background: var(--success); }
+.status-running  { background: var(--info-bg);     color: var(--primary);  border: 1px solid var(--info-border); }
+.status-running  .dot { background: var(--primary); }
+.status-failed   { background: var(--destructive-bg); color: var(--destructive); border: 1px solid var(--destructive-border); }
+.status-failed   .dot { background: var(--destructive); }
+
+/* --- Element-Plus 细节覆盖 --- */
+.el-menu {
+  border-right: none !important;
+}
+.el-menu-item.is-active {
+  background: var(--accent) !important;
+  color: var(--primary) !important;
+  font-weight: 500;
+}
+.el-button--primary {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+.el-button--primary:hover {
+  background: var(--primary-hover) !important;
+  border-color: var(--primary-hover) !important;
+}
+.el-table th.el-table__cell {
+  background: var(--background) !important;
+  color: var(--muted-foreground) !important;
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.el-input__wrapper {
+  border-radius: var(--radius-md) !important;
+}
+
+/* --- 滚动条 --- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}

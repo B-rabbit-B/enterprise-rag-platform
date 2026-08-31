@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}系统设置 - 企业知识库 RAG 问答平台{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <h1 class="text-2xl font-semibold">系统设置</h1>
+  <p class="text-sm text-gray-500 mt-1">展示后端当前生效的 RAG 配置参数（来自 config/settings.py + .env）</p>
+</div>
+
+<div id="config-container" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <!-- 配置面板（JS 填充） -->
+  <div class="text-gray-400 text-sm py-10 text-center">加载中...</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function cfgRow(label, value, sub) {
+  return `
+    <div class="flex justify-between items-start py-2 border-b border-gray-50 last:border-0">
+      <div>
+        <div class="text-sm font-medium text-gray-700">${label}</div>
+        ${sub ? `<div class="text-[11px] text-gray-400 mt-0.5">${sub}</div>` : ''}
+      </div>
+      <code class="text-xs bg-gray-100 px-2 py-1 rounded text-blue-600 font-mono">${value}</code>
+    </div>`;
+}
+
+function panel(title, icon, items) {
+  return `
+    <div class="card p-5">
+      <h3 class="font-semibold mb-3 flex items-center gap-2">
+        <span>${icon}</span> ${title}
+      </h3>
+      <div>${items.join('')}</div>
+    </div>`;
+}
+
+async function loadConfig() {
+  try {
+    const res = await fetch('/api/config');
+    const d = await res.json();
+    if (d.code !== 200) throw new Error(d.msg);
+    const c = d.data;
+
+    const containers = [
+      panel('🎯 检索策略', null, [
+        cfgRow('混合检索 (HYBRID_ENABLE)', c.hybrid_enabled ? '✅ 启用' : '❌ 关闭', '向量 + BM25 融合'),
+        cfgRow('向量权重', c.hybrid_vector_weight, 'HYBRID_VECTOR_WEIGHT'),
+        cfgRow('BM25 权重', c.hybrid_bm25_weight, 'HYBRID_BM25_WEIGHT'),
+        cfgRow('BM25 Top-K', c.hybrid_bm25_top_k, 'HYBRID_BM25_TOP_K'),
+      ]),
+      panel('🔍 RAG 链路参数', null, [
+        cfgRow('召回 Top-K', c.rag_top_k, 'RAG_RETRIEVE_TOP_K'),
+        cfgRow('Rerank Top-N', c.rag_rerank_top_n, 'RAG_RERANK_TOP_N'),
+        cfgRow('最大上下文 Token', c.rag_max_context_token, 'RAG_MAX_CONTEXT_TOKEN'),
+      ]),
+      panel('✂️ 分块策略', null, [
+        cfgRow('分块方式', '递归字符分块', 'LangChain RecursiveCharacterTextSplitter'),
+        cfgRow('块大小', c.chunk_size, 'CHUNK_SIZE'),
+        cfgRow('重叠大小', c.chunk_overlap, 'CHUNK_OVERLAP'),
+      ]),
+      panel('🤖 模型配置', null, [
+        cfgRow('Embedding 模型', c.embedding_model, 'EMBEDDING_MODEL（HuggingFace）'),
+        cfgRow('LLM 模型', c.llm_model, 'LLM_MODEL'),
+      ]),
+      panel('💾 存储路径', null, [
+        cfgRow('ChromaDB 持久化', c.chroma_persist_dir, 'CHROMA_PERSIST_DIR'),
+        cfgRow('SQLite 数据库', c.sqlite_database_url, 'SQLITE_DATABASE_URL'),
+      ]),
+    ];
+
+    document.getElementById('config-container').innerHTML = containers.join('');
+  } catch (e) {
+    document.getElementById('config-container').innerHTML =
+      `<div class="col-span-2 text-center text-red-500 text-sm py-10">加载配置失败: ${e.message}</div>`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadConfig);
+</script>
+{% endblock %}

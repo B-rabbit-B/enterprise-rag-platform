@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}企业知识库 RAG 问答平台{% endblock %}</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="/static/app.css">
+<style>
+  :root { --primary: #165DFF; --bg: #F7F8FA; --border: #E5E6EB; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; background: var(--bg); color: #1D2129; }
+  .nav-link { transition: all 0.15s; }
+  .nav-link:hover { background: #F2F3F5; }
+  .nav-link.active { background: #E8F0FF; color: var(--primary); }
+  .card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border: 1px solid var(--border); }
+  .btn-primary { background: var(--primary); color: #fff; padding: 8px 16px; border-radius: 6px; font-size: 14px; border: none; cursor: pointer; }
+  .btn-primary:hover { background: #0E42D2; }
+  .btn-secondary { background: #fff; color: #1D2129; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border); font-size: 14px; cursor: pointer; text-decoration: none; display: inline-block; }
+  .btn-secondary:hover { background: #F2F3F5; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; background: #E8F0FF; color: var(--primary); }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #00B42A; margin-right: 6px; }
+  input, textarea, select { border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 14px; outline: none; }
+  input:focus, textarea:focus, select:focus { border-color: var(--primary); }
+  .fade-in { animation: fadeIn 0.3s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+</style>
+{% block extra_css %}{% endblock %}
+</head>
+<body class="min-h-screen flex flex-col">
+
+<header class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm z-20">
+  <div class="flex items-center gap-8">
+    <a href="/" class="flex items-center gap-2">
+      <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-bold text-sm">R</div>
+      <span class="font-semibold text-lg tracking-tight">企业知识库 RAG 问答平台</span>
+    </a>
+    <nav class="hidden md:flex items-center gap-1 text-sm">
+      <a href="/" class="nav-link px-3 py-1.5 rounded text-gray-600">总览</a>
+      <a href="/documents" class="nav-link px-3 py-1.5 rounded text-gray-600">文档管理</a>
+      <a href="/chat" class="nav-link px-3 py-1.5 rounded text-gray-600">知识库问答</a>
+      <a href="/evaluation" class="nav-link px-3 py-1.5 rounded text-gray-600">检索评估</a>
+      <a href="/settings" class="nav-link px-3 py-1.5 rounded text-gray-600">系统设置</a>
+      <a href="/docs" target="_blank" class="nav-link px-3 py-1.5 rounded text-gray-600">API 文档 ↗</a>
+    </nav>
+  </div>
+  <div class="flex items-center gap-4 text-sm">
+    <span class="hidden sm:inline-flex items-center px-2 py-1 rounded bg-green-50 text-green-600 text-xs">
+      <span class="status-dot"></span>服务运行中
+    </span>
+    <span class="text-xs text-gray-400">v1.1.0</span>
+    <span id="user-badge" class="text-gray-600">未登录</span>
+    <button onclick="toggleLogin()" id="login-btn" class="btn-primary text-xs">登录</button>
+  </div>
+</header>
+
+<main class="flex-1 p-6 max-w-7xl w-full mx-auto">
+  {% block content %}{% endblock %}
+</main>
+
+<div id="login-modal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onclick="if(event.target===this)toggleLogin()">
+  <div class="card p-6 w-80 fade-in">
+    <h3 class="font-semibold text-lg mb-4">管理员登录</h3>
+    <div class="space-y-3">
+      <input id="login-user" type="text" placeholder="用户名 (默认 admin)" class="w-full">
+      <input id="login-pwd" type="password" placeholder="密码 (默认 admin123456)" class="w-full">
+      <button onclick="doLogin()" class="btn-primary w-full">登录</button>
+      <p id="login-err" class="text-red-500 text-xs hidden"></p>
+      <p class="text-xs text-gray-400 text-center">默认账号: admin / admin123456</p>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="hidden fixed top-20 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-lg text-sm z-50 shadow-lg"></div>
+
+<script src="/static/app.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}总览 - 企业知识库 RAG 问答平台{% endblock %}
+
+{% block content %}
+<!-- 第一屏：标题 + 指标卡片 -->
+<div class="mb-8">
+  <h1 class="text-2xl font-semibold text-gray-900 mb-2">企业知识库 RAG 问答平台</h1>
+  <p class="text-gray-500">基于 FastAPI、ChromaDB、BGE-Reranker 的企业级知识库问答系统</p>
+</div>
+
+<!-- 三个核心指标 -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+  <div class="metric-card">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-sm text-gray-500">知识库文档数</span>
+      <span class="text-lg">📄</span>
+    </div>
+    <div class="text-3xl font-bold text-gray-900" id="stat-doc">—</div>
+    <div class="text-xs text-gray-400 mt-1">支持 PDF / TXT / MD</div>
+  </div>
+  <div class="metric-card">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-sm text-gray-500">向量分片数量</span>
+      <span class="text-lg">🧩</span>
+    </div>
+    <div class="text-3xl font-bold text-gray-900" id="stat-chunk">—</div>
+    <div class="text-xs text-gray-400 mt-1">递归分块 + 重叠窗口</div>
+  </div>
+  <div class="metric-card">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-sm text-gray-500">混合检索状态</span>
+      <span class="text-lg">🔀</span>
+    </div>
+    <div class="text-3xl font-bold text-blue-600" id="stat-hybrid">—</div>
+    <div class="text-xs text-gray-400 mt-1">BM25 + 向量加权融合</div>
+  </div>
+</div>
+
+<!-- 核心能力 + 快速操作 -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+  <!-- 核心能力 -->
+  <div class="card p-6 lg:col-span-2">
+    <h2 class="font-semibold text-lg mb-4">核心能力</h2>
+    <div class="grid grid-cols-2 gap-4">
+      <div class="p-4 rounded-lg bg-blue-50/60 border border-blue-100">
+        <div class="text-blue-600 font-medium mb-1">📚 智能文档解析</div>
+        <div class="text-xs text-gray-500">递归字符分块 + 块重叠 · PDF 表格规范化 · 乱码噪声过滤</div>
+      </div>
+      <div class="p-4 rounded-lg bg-green-50/60 border border-green-100">
+        <div class="text-green-600 font-medium mb-1">🔀 混合检索召回</div>
+        <div class="text-xs text-gray-500">BM25 关键词精准命中 + 向量语义召回 · 加权融合</div>
+      </div>
+      <div class="p-4 rounded-lg bg-purple-50/60 border border-purple-100">
+        <div class="text-purple-600 font-medium mb-1">🎯 Reranker 精排</div>
+        <div class="text-xs text-gray-500">BGE-Reranker 二次排序，过滤无关片段</div>
+      </div>
+      <div class="p-4 rounded-lg bg-orange-50/60 border border-orange-100">
+        <div class="text-orange-600 font-medium mb-1">📊 可复现评估</div>
+        <div class="text-xs text-gray-500">无 LLM 依赖评估脚本 · 量化 Recall 指标对比</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 快速操作 -->
+  <div class="card p-6">
+    <h2 class="font-semibold text-lg mb-4">快速操作</h2>
+    <div class="space-y-3">
+      <a href="/documents" class="block btn-primary text-center">📄 上传文档</a>
+      <a href="/chat" class="block btn-secondary text-center">💬 测试问答</a>
+      <a href="/evaluation" class="block btn-secondary text-center">📊 检索评估</a>
+      <a href="/docs" target="_blank" class="block btn-secondary text-center">🔌 API 文档</a>
+    </div>
+  </div>
+</div>
+
+<!-- 技术栈 + RAG 流程 -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div class="card p-6">
+    <h2 class="font-semibold text-lg mb-4">技术栈</h2>
+    <div class="flex flex-wrap gap-2">
+      <span class="tag">Python</span>
+      <span class="tag">FastAPI</span>
+      <span class="tag">ChromaDB</span>
+      <span class="tag">LangChain</span>
+      <span class="tag">BGE-Reranker</span>
+      <span class="tag">Sentence-Transformers</span>
+      <span class="tag">SQLAlchemy</span>
+      <span class="tag">SQLite</span>
+      <span class="tag">PyJWT</span>
+      <span class="tag">tiktoken</span>
+      <span class="tag">PyPDF2</span>
+    </div>
+  </div>
+  <div class="card p-6">
+    <h2 class="font-semibold text-lg mb-4">RAG 执行流程</h2>
+    <div class="space-y-2 text-sm text-gray-600">
+      <div class="flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs flex items-center justify-center font-bold">1</span>文档上传 → 递归分块 + 块重叠</div>
+      <div class="flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs flex items-center justify-center font-bold">2</span>向量化 → 写入 ChromaDB 向量库</div>
+      <div class="flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs flex items-center justify-center font-bold">3</span>混合检索 → 向量 + BM25 加权融合</div>
+      <div class="flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs flex items-center justify-center font-bold">4</span>Rerank 精排 → BGE-Reranker 二次排序</div>
+      <div class="flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs flex items-center justify-center font-bold">5</span>Token 截断 → 控制上下文长度</div>
+      <div class="flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs flex items-center justify-center font-bold">6</span>LLM 生成 → 溯源返回</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadStats() {
+  const data = await fetch('/api/stats').then(r => r.json());
+  if (data.code === 200) {
+    document.getElementById('stat-doc').textContent = data.data.doc_count;
+    document.getElementById('stat-chunk').textContent = data.data.chunk_count.toLocaleString();
+    document.getElementById('stat-hybrid').textContent = data.data.bm25_ready ? '已就绪' : '待初始化';
+    document.getElementById('stat-hybrid').className = 'text-3xl font-bold ' + (data.data.bm25_ready ? 'text-green-600' : 'text-orange-500');
+  }
+}
+loadStats();
+// 每 10 秒刷新一次
+setInterval(loadStats, 10000);
+</script>
+{% endblock %}

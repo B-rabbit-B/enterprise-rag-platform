@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}文档管理 - 企业知识库 RAG 问答平台{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6" style="height: calc(100vh - 140px);">
+  <!-- 左侧：上传 -->
+  <div class="lg:col-span-1">
+    <div class="card p-5">
+      <h2 class="font-semibold mb-4">上传文档</h2>
+      <div class="space-y-3">
+        <div class="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center hover:border-blue-400 transition cursor-pointer" onclick="document.getElementById('file-input').click()">
+          <div class="text-3xl mb-2">📤</div>
+          <div class="text-sm text-gray-600">点击或拖拽文件到这里</div>
+          <div class="text-xs text-gray-400 mt-1">支持 PDF / TXT / MD · 最大 20MB</div>
+        </div>
+        <input id="file-input" type="file" accept=".pdf,.txt,.md" class="hidden" onchange="onFileSelect(event)">
+        <div>
+          <label class="text-xs text-gray-500 block mb-1">知识库标签</label>
+          <input id="upload-tag" type="text" placeholder="例如：fastapi / sqlalchemy" class="w-full">
+        </div>
+        <div id="file-preview" class="hidden p-2 bg-gray-50 rounded text-xs text-gray-600"></div>
+        <button onclick="doUpload()" class="btn-primary w-full" id="upload-btn">开始上传</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧：文档列表 -->
+  <div class="lg:col-span-2 overflow-hidden flex flex-col">
+    <div class="card p-5 flex-1 flex flex-col overflow-hidden">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="font-semibold">文档列表</h2>
+        <button onclick="loadDocs()" class="text-xs text-blue-600 hover:underline">🔄 刷新</button>
+      </div>
+      <div id="doc-list" class="flex-1 overflow-y-auto space-y-2"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let pendingFile = null;
+
+function onFileSelect(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  if (f.size > 20 * 1024 * 1024) { toast('文件超过 20MB', 'error'); return; }
+  pendingFile = f;
+  document.getElementById('file-preview').classList.remove('hidden');
+  document.getElementById('file-preview').innerHTML = `📄 <b>${escapeHtml(f.name)}</b> · ${(f.size/1024).toFixed(1)} KB`;
+}
+
+async function doUpload() {
+  if (!ensureLogin()) return;
+  if (!pendingFile) { toast('请先选择文件', 'error'); return; }
+  const tag = document.getElementById('upload-tag').value.trim();
+  const fd = new FormData();
+  fd.append('file', pendingFile);
+  fd.append('tag', tag);
+
+  const btn = document.getElementById('upload-btn');
+  btn.disabled = true; btn.textContent = '上传中...';
+
+  const res = await apiForm('/api/doc/upload', fd);
+  btn.disabled = false; btn.textContent = '开始上传';
+
+  if (res.code === 200) {
+    const d = res.data;
+    toast(`上传成功：${d.filename} · ${d.chunk_count} 个分片`, 'success');
+    pendingFile = null;
+    document.getElementById('file-input').value = '';
+    document.getElementById('file-preview').classList.add('hidden');
+    loadDocs();
+  } else {
+    toast(res.msg || '上传失败', 'error');
+  }
+}
+
+async function loadDocs() {
+  const box = document.getElementById('doc-list');
+  box.innerHTML = '<div class="text-center text-gray-400 text-sm py-8">加载中...</div>';
+  if (!currentToken) { box.innerHTML = '<div class="text-center text-gray-400 text-sm py-8">请先登录查看文档</div>'; return; }
+
+  const res = await api('/api/doc/list');
+  if (res.code !== 200) { box.innerHTML = '<div class="text-center text-red-400 text-sm py-8">加载失败</div>'; return; }
+
+  const docs = res.data || [];
+  if (!docs.length) { box.innerHTML = '<div class="text-center text-gray-400 text-sm py-8">暂无文档，上传一个试试</div>'; return; }
+
+  box.innerHTML = docs.map(d => {
+    const parseOk = d.parse_status === 'success';
+    const statusClass = parseOk ? 'text-green-600' : 'text-red-500';
+    const statusIcon = parseOk ? '✓' : '✗';
+    const statusText = parseOk ? '解析成功' : '解析待处理';
+    return `
+    <div class="p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-blue-200 transition">
+      <div class="flex justify-between items-start">
+        <div class="flex-1">
+          <div class="font-medium text-sm text-gray-800 flex items-center gap-2">
+            ${escapeHtml(d.filename)}
+            <span class="text-xs ${statusClass}">${statusIcon} ${statusText}</span>
+          </div>
+          <div class="text-xs text-gray-400 mt-1 flex gap-2">
+            <span>${escapeHtml(d.file_type)}</span>
+            <span>·</span>
+            <span>${d.chunk_count || 0} 分片</span>
+            <span>·</span>
+            <span>${formatTime(d.upload_time)}</span>
+            ${d.tag ? `· <span class="tag">${escapeHtml(d.tag)}</span>` : ''}
+          </div>
+          ${d.preview ? `<div class="text-xs text-gray-500 mt-2 line-clamp-2">"${escapeHtml(d.preview)}..."</div>` : ''}
+        </div>
+        <button onclick="delDoc(${d.id})" class="text-xs text-red-500 hover:text-red-700 ml-3">🗑 删除</button>
+      </div>
+    </div>
+  `;
+  }).join('');
+}
+
+async function delDoc(id) {
+  if (!confirm('确认删除？会同时移除向量库中的分片')) return;
+  const res = await api('/api/doc/' + id, { method: 'DELETE' });
+  if (res.code === 200) { toast('删除成功', 'success'); loadDocs(); }
+  else toast(res.msg || '删除失败', 'error');
+}
+
+document.addEventListener('DOMContentLoaded', loadDocs);
+window.onLoginSuccess = loadDocs;
+</script>
+{% endblock %}

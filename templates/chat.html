@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block title %}知识库问答 - 企业知识库 RAG 问答平台{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6" style="height: calc(100vh - 140px);">
+
+  <!-- 左栏：策略 + 会话 + 输入 -->
+  <div class="lg:col-span-3 flex flex-col gap-4">
+    <div class="card p-5">
+      <h2 class="font-semibold mb-4 flex items-center gap-2">
+        <span class="text-blue-600">⚙️</span> 检索策略
+      </h2>
+      <div class="space-y-3 text-sm">
+        <div>
+          <label class="text-xs text-gray-500 block mb-1">检索模式</label>
+          <select id="retrieve-mode" class="w-full">
+            <option value="hybrid">混合检索（向量 + BM25）</option>
+            <option value="vector">纯向量检索</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-gray-500 block mb-1">Rerank 精排</label>
+          <select id="use-rerank" class="w-full">
+            <option value="true">启用（BGE-Reranker）</option>
+            <option value="false">关闭（直接用检索结果）</option>
+          </select>
+        </div>
+        <div class="pt-2 border-t border-gray-100">
+          <div class="text-xs text-gray-500 space-y-1">
+            <div class="flex justify-between"><span>向量权重</span><span id="cfg-vw" class="text-blue-600">—</span></div>
+            <div class="flex justify-between"><span>BM25 权重</span><span id="cfg-bw" class="text-blue-600">—</span></div>
+            <div class="flex justify-between"><span>Top-K</span><span id="cfg-topk" class="text-blue-600">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card p-5">
+      <h2 class="font-semibold mb-3">会话 & 过滤</h2>
+      <div class="space-y-3">
+        <div>
+          <label class="text-xs text-gray-500 block mb-1">会话名称</label>
+          <input id="session-name" type="text" placeholder="例如：SQLAlchemy 学习" class="w-full text-sm">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500 block mb-1">标签过滤</label>
+          <input id="chat-tag" type="text" placeholder="留空搜全部" class="w-full text-sm">
+        </div>
+      </div>
+    </div>
+
+    <div class="card p-5 flex-1 flex flex-col">
+      <h2 class="font-semibold mb-3">问题输入</h2>
+      <textarea id="chat-question" rows="6" placeholder="输入你的问题..." class="w-full flex-1 text-sm resize-none"></textarea>
+      <button onclick="sendRAG()" id="send-btn" class="btn-primary w-full mt-3">🚀 发起 RAG 问答</button>
+      <p class="text-xs text-gray-400 mt-2 text-center">Ctrl + Enter 快捷发送</p>
+    </div>
+  </div>
+
+  <!-- 中栏：回答 -->
+  <div class="lg:col-span-5 flex flex-col gap-4 overflow-hidden">
+    <div class="card p-5 flex-1 flex flex-col overflow-hidden">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="font-semibold">回答结果</h2>
+        <div id="chat-meta" class="text-xs text-gray-400"></div>
+      </div>
+      <div class="flex-1 overflow-y-auto" id="chat-log">
+        <div id="empty-state" class="h-full flex flex-col items-center justify-center text-gray-400">
+          <div class="text-5xl mb-4">💡</div>
+          <div class="text-sm">选择检索策略 → 输入问题 → 点击发起问答</div>
+          <div class="text-xs mt-2">右侧面板实时显示检索到的片段</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右栏：独立溯源面板 -->
+  <div class="lg:col-span-4 flex flex-col gap-4 overflow-hidden">
+    <div class="card p-5 flex-1 flex flex-col overflow-hidden">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="font-semibold">📎 检索溯源</h2>
+        <span id="hit-count" class="text-xs text-gray-400">0 条</span>
+      </div>
+      <div class="flex-1 overflow-y-auto space-y-2" id="hit-panel">
+        <div class="text-center text-gray-400 text-sm py-8">暂无检索结果</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let sessionId = null;
+
+function ensureLogin() {
+  if (!currentToken) { toggleLogin(); return false; }
+  return true;
+}
+
+function loadRagConfig() {
+  fetch('/api/config').then(r => r.json()).then(d => {
+    if (d.code === 200) {
+      document.getElementById('cfg-vw').textContent = d.data.hybrid_vector_weight;
+      document.getElementById('cfg-bw').textContent = d.data.hybrid_bm25_weight;
+      document.getElementById('cfg-topk').textContent = d.data.rag_top_k;
+    }
+  });
+}
+
+function addBubble(role, content) {
+  const empty = document.getElementById('empty-state');
+  if (empty) empty.remove();
+  const log = document.getElementById('chat-log');
+  const wrap = document.createElement('div');
+  wrap.className = 'mb-4 fade-in';
+  if (role === 'user') {
+    wrap.innerHTML = `<div class="flex justify-end"><div class="user-bubble max-w-[85%] text-sm"><div class="text-xs text-gray-400 mb-1">👤 你</div>${escapeHtml(content)}</div></div>`;
+  } else {
+    wrap.innerHTML = `<div class="answer-bubble text-sm"><div class="text-xs text-blue-600 mb-1">🤖 RAG 回答</div>${escapeHtml(content || '（无回复）')}</div>`;
+  }
+  log.appendChild(wrap);
+  log.scrollTop = log.scrollHeight;
+}
+
+function renderHitPanel(hits) {
+  const panel = document.getElementById('hit-panel');
+  const count = document.getElementById('hit-count');
+  if (!hits || !hits.length) {
+    panel.innerHTML = '<div class="text-center text-gray-400 text-sm py-8">⚠ 未检索到相关片段</div>';
+    count.textContent = '0 条';
+    return;
+  }
+  count.textContent = hits.length + ' 条';
+  panel.innerHTML = hits.map((s, i) => `
+    <div class="hit-card bg-gray-50 rounded-lg p-3 text-xs">
+      <div class="flex justify-between mb-2">
+        <span class="font-medium text-blue-600">${i+1}. ${escapeHtml(s.metadata?.filename || '未知')}</span>
+        <span class="text-gray-400 text-[11px]">
+          相似度 ${(s.similarity || 0).toFixed(3)}
+          ${s.rerank_score ? ` · 重排 ${s.rerank_score.toFixed(3)}` : ''}
+        </span>
+      </div>
+      <div class="text-gray-600 line-clamp-4 leading-relaxed">${escapeHtml(s.document)}</div>
+      <div class="mt-2 flex gap-1 flex-wrap">
+        ${s.metadata?.tag ? `<span class="tag">${escapeHtml(s.metadata.tag)}</span>` : ''}
+        <span class="text-[10px] text-gray-400">chunk #${s.metadata?.chunk_index ?? '-'}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function sendRAG() {
+  if (!ensureLogin()) return;
+  const question = document.getElementById('chat-question').value.trim();
+  if (!question) { toast('请输入问题', 'error'); return; }
+  const tag = document.getElementById('chat-tag').value.trim();
+  const sessionName = document.getElementById('session-name').value.trim() || '临时会话';
+  const retrieveMode = document.getElementById('retrieve-mode').value;
+  const useRerank = document.getElementById('use-rerank').value === 'true';
+
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true; btn.textContent = '思考中...';
+  document.getElementById('chat-meta').textContent = `${retrieveMode === 'hybrid' ? '混合检索' : '纯向量'} · Rerank=${useRerank ? 'ON' : 'OFF'}`;
+
+  try {
+    if (!sessionId) {
+      const sess = await api('/api/chat/session', {
+        method: 'POST',
+        body: JSON.stringify({ session_name: sessionName })
+      });
+      if (sess.code === 200) {
+        sessionId = sess.data.session_id;
+      } else {
+        toast(sess.msg || '创建会话失败', 'error'); btn.disabled = false; btn.textContent = '🚀 发起 RAG 问答'; return;
+      }
+    }
+
+    addBubble('user', question);
+
+    const result = await api(`/api/chat/session/${sessionId}/rag`, {
+      method: 'POST',
+      body: JSON.stringify({ question, tag, retrieve_mode: retrieveMode, use_rerank: useRerank })
+    });
+
+    if (result.code === 200 && result.data) {
+      const d = result.data;
+      addBubble('assistant', d.answer || '');
+      renderHitPanel(d.reference);
+    } else {
+      addBubble('assistant', '（回答失败）' + (result.msg || ''));
+      renderHitPanel([]);
+    }
+  } catch (e) {
+    toast('请求异常: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '🚀 发起 RAG 问答';
+    document.getElementById('chat-question').value = '';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadRagConfig();
+  document.getElementById('chat-question')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) sendRAG();
+  });
+});
+</script>
+{% endblock %}

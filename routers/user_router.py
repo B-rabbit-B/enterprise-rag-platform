@@ -64,3 +64,67 @@ def get_my_info(
         },
         msg="获取用户信息成功",
     )
+
+
+# ========== 用户管理（管理员用）==========
+@router.get("/list")
+def list_users(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not current_user.is_admin:
+        return ApiResponse.error(msg="仅管理员可查看用户列表", code=403)
+    users = db.query(User).order_by(User.id.asc()).all()
+    return ApiResponse.success(
+        data=[
+            {
+                "id": u.id,
+                "username": u.username,
+                "is_admin": u.is_admin,
+                "create_time": u.create_time.strftime("%Y-%m-%d %H:%M:%S") if u.create_time else None,
+            }
+            for u in users
+        ],
+        msg="ok",
+    )
+
+
+@router.post("/{user_id}/toggle-admin")
+def toggle_admin(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not current_user.is_admin:
+        return ApiResponse.error(msg="仅管理员可操作", code=403)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return ApiResponse.error(msg="用户不存在", code=404)
+    if user.username == "admin" and not user.is_admin:
+        return ApiResponse.error(msg="内置 admin 账号不可降权", code=400)
+    # 不能把自己降权
+    if user.id == current_user.id:
+        return ApiResponse.error(msg="不能修改自己的权限", code=400)
+    user.is_admin = not user.is_admin
+    db.commit()
+    return ApiResponse.success(data={"is_admin": user.is_admin}, msg="权限已更新")
+
+
+@router.delete("/{user_id}")
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not current_user.is_admin:
+        return ApiResponse.error(msg="仅管理员可操作", code=403)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return ApiResponse.error(msg="用户不存在", code=404)
+    if user.username == "admin":
+        return ApiResponse.error(msg="内置 admin 账号不可删除", code=400)
+    if user.id == current_user.id:
+        return ApiResponse.error(msg="不能删除自己", code=400)
+    db.delete(user)
+    db.commit()
+    return ApiResponse.success(msg="删除成功")

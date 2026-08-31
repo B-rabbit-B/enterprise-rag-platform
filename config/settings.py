@@ -31,4 +31,10 @@ class Settings(BaseSettings):
     RAG_RETRIEVE_TOP_K: int = 5         # 向量召回数量
     RAG_RERANK_TOP_N: int = 3           # 重排之后保留片段
 
+    # 混合检索参数
+    HYBRID_VECTOR_WEIGHT: float = 0.6   # 向量检索权重
+    HYBRID_BM25_WEIGHT: float = 0.4     # BM25 关键词检索权重
+    HYBRID_BM25_TOP_K: int = 5          # BM25 召回数量
+    HYBRID_ENABLE: bool = True          # 是否启用混合检索
+
 settings = Settings()

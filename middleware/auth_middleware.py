@@ -16,14 +16,27 @@ from utils.jwt_util import decode_token
 from utils.response import ApiResponse
 
 # 白名单：不需要鉴权的接口（按前缀匹配）
+# 说明：/ 只匹配根路径本身，页面路由、静态资源、统计接口需显式加
 WHITE_LIST = [
+    # 用户相关
     "/api/user/login",
     "/api/user/register",
+    # Swagger / OpenAPI
     "/docs",
     "/openapi.json",
     "/redoc",
+    # 首页 & 页面路由
     "/",
+    "/chat",
+    "/documents",
+    "/evaluation",
+    "/settings",
     "/favicon.ico",
+    # 静态资源
+    "/static",
+    # 前端用轻量只读接口（无敏感数据）
+    "/api/stats",
+    "/api/config",
 ]
 
 class AuthMiddleware(BaseHTTPMiddleware):
