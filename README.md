@@ -1,11 +1,14 @@
 # 企业知识库 RAG 问答平台
 
-基于 FastAPI + LangChain + Chroma 构建的轻量级企业级 RAG（Retrieval-Augmented Generation，检索增强生成）后端服务。
+前后端分离的轻量级企业级 RAG（Retrieval-Augmented Generation，检索增强生成）平台。
 
-用户可上传公开技术文档构建私有知识库，通过 「向量检索 + Rerank 重排 + Token 截断 + LLM 生成」 实现带文档溯源的智能问答。
+- **后端**：FastAPI + SQLAlchemy + ChromaDB + LangChain + Reranker
+- **前端**：Vite + Vue3 + TypeScript + Element-Plus + Pinia + Axios
 
-> 面向学习 / 演示场景，支持完整 RAG 业务闭环：
-> 鉴权 → 文档入库 → 向量化 → 检索召回 → Rerank 精排 → Token 截断 → Prompt 组装 → LLM 生成 → 结果溯源。
+用户可上传公开技术文档构建私有知识库，通过「向量检索 + BM25 混合召回 + Rerank 精排 + Token 截断 + LLM 生成」实现带文档溯源的智能问答。
+
+> 面向学习 / 演示场景，支持完整 RAG 业务闭环 + 可视化管理界面：
+> 注册登录 → 文档上传解析 → 分片预览 → 混合检索问答 → 引用溯源 → 检索评估 → 日志管理。
 
 ---
 
@@ -23,6 +26,11 @@
 | 鉴权 | python-jose + passlib(bcrypt) | JWT Token 鉴权 + 密码加盐哈希 |
 | 配置 | pydantic-settings + python-dotenv | `.env` 配置管理 |
 | 日志 | 自研 logger（按天滚动） | 结构化字段：user_id / query / hit_count / cost_sec |
+| **前端框架** | Vite + Vue3 + TypeScript | SPA 单页应用，开发热更新 |
+| **UI 组件** | Element-Plus | 企业级 UI 组件库 |
+| **状态管理** | Pinia | 用户 / 全局状态 |
+| **HTTP** | Axios | 统一请求拦截、JWT 自动注入 |
+| **路由** | Vue Router | 哈希路由 |
 
 ---
 
@@ -41,7 +49,11 @@
 - ✅ **lifespan 生命周期管理**：Reranker 仅加载一次，避免 `reload` 重复加载
 - ✅ **递归字符分块 + 块重叠（v1.1）**：按段落 → 句子优先级多层递归切分，搭配重叠窗口缓解语义硬截断；PDF 表格规范化、OCR 乱码过滤
 - ✅ **混合检索 BM25 + 向量（v1.1）**：纯 Python BM25 零依赖实现，向量语义召回 + BM25 关键词精准命中加权融合，支持配置开关一键回退纯向量
-- ✅ **RAG 评估脚本（v1.1）**：无 LLM 依赖，自动对比不同检索方案 Recall@K，输出评估报告，为迭代提供量化依据
+- ✅ **RAG 评估脚本（v1.1）**：无 LLM 依赖，自动对比不同检索方案 Recall@K，输出评估报告
+- ✅ **可视化前端管理台**：文档管理（三栏布局 + 分片预览）、知识库问答（会话历史 + 引用溯源 + 自动滚动）、检索评估（弹窗编辑用例 + 多标签 + 对比报告）、系统设置
+- ✅ **检索评估 API**：`POST /api/eval/run` 量化对比纯向量 vs 混合检索的 Recall@K / 耗时
+- ✅ **日志路由**：`/api/log` 记录用户操作与 RAG 问答耗时
+- ✅ **多标签文档管理**：支持一个文档打多个 tag，检索评估支持多 tag 匹配（命中任意一个即算）
 
 ---
 
@@ -140,7 +152,17 @@ python main.py
 - 预热 Reranker 模型（首次需下载，较慢；后续秒开）
 - 监听 `http://127.0.0.1:8000`
 
-### 5. 访问接口文档
+### 5. 启动前端（另开一个终端）
+
+```bash
+cd rag-admin-web
+npm install       # 首次运行需安装依赖
+npm run dev
+```
+
+前端运行在 <http://127.0.0.1:5173>，已配置代理自动转发 `/api/*` 到后端 8000 端口。
+
+### 6. 访问接口文档
 
 - Swagger UI：<http://127.0.0.1:8000/docs>
 - ReDoc：<http://127.0.0.1:8000/redoc>
@@ -191,7 +213,22 @@ Authorization: Bearer <token>
 | POST | `/api/doc/upload` | 上传文档（form-data：`file` + 可选 `tag`），自动切片、向量化入库 |
 | GET | `/api/doc/list` | 获取文档元数据列表 |
 | GET | `/api/doc/search` | 调试：按标签检索向量片段（`query` + 可选 `tag` + `top_k`） |
+| GET | `/api/doc/{doc_id}/chunks` | 获取文档的实时分片（前端预览用） |
+| POST | `/api/doc/{doc_id}/reparse` | 重新解析文档（重新切片 + 重新向量化） |
 | DELETE | `/api/doc/{doc_id}` | 删除文档，同步清理 SQLite 与 Chroma |
+
+### 4. 检索评估模块 `/api/eval`
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/eval/meta` | 获取当前向量库中所有已入库的 tag 列表 |
+| POST | `/api/eval/run` | 执行评估，对比纯向量 vs 混合检索的 Recall@K / 耗时 |
+
+### 5. 日志模块 `/api/log`
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/log/list` | 查询用户操作日志 |
 
 ### RAG 执行流程
 
@@ -227,13 +264,32 @@ enterprise-rag-platform/
 ├── config/              # 配置管理（settings.py）
 ├── core/                # 数据库基类（db_base.py）
 ├── middleware/          # JWT 鉴权中间件、全局异常处理
-├── models/              # SQLAlchemy ORM 模型（user / chat / doc）
-├── routers/             # 路由：user / chat / doc
+├── models/              # SQLAlchemy ORM 模型（user / chat / doc / log）
+├── routers/             # 路由：user / chat / doc / eval / log
 ├── schemas/             # Pydantic 请求 / 响应模型
 ├── service/             # 业务逻辑层（chat / doc / rag）
-├── tests/               # 测试脚本（含 RAG 检索效果评估脚本）
-├── tests/               # 测试用例
-├── utils/               # jwt / logger / rerank / response / token_counter
+├── static/              # 静态资源（fastapi 模板用）
+├── templates/           # Jinja2 模板
+├── tests/               # 测试脚本（含 RAG 检索效果评估）
+├── utils/               # jwt / logger / rerank / response / bm25 / token_counter
+│
+├── rag-admin-web/       # 🖥️ 前端（Vite + Vue3 + TS）
+│   ├── src/
+│   │   ├── api/         # Axios 请求模块（chat / doc / request / stats / user）
+│   │   ├── data/        # Mock 数据（documents / evaluation / qa / overview）
+│   │   ├── router/      # Vue Router 路由
+│   │   ├── stores/      # Pinia 状态管理
+│   │   ├── styles/      # 主题 CSS（theme.css）
+│   │   ├── views/       # 页面（Dashboard / DocManage / Chat / Evaluation / Settings）
+│   │   ├── components/  # 公共组件
+│   │   ├── App.vue
+│   │   └── main.ts
+│   ├── public/
+│   ├── index.html
+│   ├── vite.config.ts   # 含 /api 代理到后端 8000
+│   ├── tsconfig*.json
+│   └── package.json
+│
 ├── .env.example         # 环境变量模板（提交到仓库）
 ├── .gitignore
 ├── deps.py              # FastAPI 依赖注入（DB session / 当前用户）
@@ -270,9 +326,11 @@ enterprise-rag-platform/
 - [x] ~~文档分块固定长度、PDF 乱码~~（v1.1 已升级：递归字符分块 + PDF 乱码清洗）
 - [x] ~~只有纯向量检索，缺少专业术语精准命中~~（v1.1 已升级：BM25 + 向量混合检索）
 - [ ] 部分会话接口仍返回裸 ORM 对象，可进一步统一为 `code/msg/data` 响应格式
-- [ ] 支持 SSE 流式问答输出
+- [ ] 支持 SSE 流式问答输出（前端已预留答案气泡组件）
 - [ ] Dockerfile 容器化部署 + docker-compose
 - [ ] 增加单元测试用例
+- [ ] 前端支持检索评估报告导出（PDF / CSV）
+- [ ] 前端文档预览（PDF 在线查看）
 
 ---
 
