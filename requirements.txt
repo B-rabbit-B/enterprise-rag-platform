@@ -1,6 +1,8 @@
 # ====== Web 框架 ======
 fastapi
 uvicorn
+python-multipart
+jinja2
 
 # ====== 数据库 / ORM ======
 sqlalchemy

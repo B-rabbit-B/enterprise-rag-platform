@@ -1,0 +1,14 @@
+.git
+.claude
+.env
+venv
+__pycache__
+*.pyc
+*.db
+chroma_db
+logs
+tmp_upload
+test_docs
+tests
+rag-admin-web
+**/node_modules

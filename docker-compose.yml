@@ -1,0 +1,40 @@
+services:
+  rag-backend:
+    build: .
+    container_name: rag-backend
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - rag-data:/app/data            # SQLite + Chroma
+      - rag-logs:/app/logs
+      - rag-uploads:/app/tmp_upload
+      - hf-cache:/root/.cache/huggingface   # embedding / reranker 模型缓存，避免重复下载
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/stats')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 300s   # 首次启动需下载模型
+    networks:
+      - 1panel-network
+
+  rag-web:
+    build: ./rag-admin-web
+    container_name: rag-web
+    restart: unless-stopped
+    depends_on:
+      - rag-backend
+    ports:
+      - "${WEB_PORT:-8080}:80"   # 如用 1Panel 反代，可删除此段，反代到 rag-web:80
+    networks:
+      - 1panel-network
+
+volumes:
+  rag-data:
+  rag-logs:
+  rag-uploads:
+  hf-cache:
+
+networks:
+  1panel-network:
+    external: true
